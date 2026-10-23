@@ -1,0 +1,17 @@
+test_g1_rust_unit_tests (__main__.TestX404Resolver.test_g1_rust_unit_tests)
+G1: Rust unit tests in x404-resolver crate pass cleanly. ... ok
+test_g2_wasm_target_exists_and_valid (__main__.TestX404Resolver.test_g2_wasm_target_exists_and_valid)
+G2: WASM target builds for wasm32-unknown-unknown and is valid binary. ... ok
+test_g3_content_addressed_deduplication (__main__.TestX404Resolver.test_g3_content_addressed_deduplication)
+G3: Semantic hashing and deduplication check. ... ok
+test_g4_g5_zero_network_audit (__main__.TestX404Resolver.test_g4_g5_zero_network_audit)
+G4 & G5: Core resolver runs with 0 external network calls (Our Lady UX). ... ok
+test_g6_x420_patience_and_fsck_off (__main__.TestX404Resolver.test_g6_x420_patience_and_fsck_off)
+G6: Saturated resolver returns x420 and accepts FSCK OFF command. ... ok
+test_g7_evidence_bundle (__main__.TestX404Resolver.test_g7_evidence_bundle)
+G7: Evidence bundle and documentation are present. ... ok
+
+----------------------------------------------------------------------
+Ran 6 tests in 0.381s
+
+OK
