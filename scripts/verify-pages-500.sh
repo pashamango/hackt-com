@@ -14,21 +14,6 @@ echo " Date: $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
 echo "=================================================="
 echo ""
 
-echo ">>> Probing Cloudflare Pages Edge: ${PAGES_URL}"
-PAGES_HEADERS=$(curl -sI -o /dev/null -w "%{http_code}\n" "${PAGES_URL}" || true)
-
-echo "    HTTP Status Code: ${PAGES_HEADERS}"
-if [ "${PAGES_HEADERS}" = "500" ]; then
-    echo "    Result: [BUG ACTIVE] Cloudflare Pages still returns empty HTTP 500."
-    echo "            Internal Pages worker is not yet provisioned by Cloudflare Staff."
-elif [ "${PAGES_HEADERS}" = "200" ]; then
-    echo "    Result: [RESOLVED] Cloudflare Pages returns HTTP 200 OK!"
-    echo "            Provisioning fixed. Ready to proceed with DNS migration."
-else
-    echo "    Result: [UNEXPECTED STATUS] HTTP ${PAGES_HEADERS} received."
-fi
-
-echo ""
 echo ">>> Probing Production Domain: ${PROD_URL} (GitHub Pages standby)"
 PROD_STATUS=$(curl -sI -o /dev/null -w "%{http_code}\n" "${PROD_URL}" || true)
 echo "    HTTP Status Code: ${PROD_STATUS}"
@@ -39,4 +24,22 @@ else
 fi
 
 echo ""
-echo "=================================================="
+echo ">>> Probing Cloudflare Pages Edge: ${PAGES_URL}"
+PAGES_STATUS=$(curl -sI -o /dev/null -w "%{http_code}\n" "${PAGES_URL}" || true)
+
+echo "    HTTP Status Code: ${PAGES_STATUS}"
+if [ "${PAGES_STATUS}" = "200" ]; then
+    echo "    Result: [RESOLVED] Cloudflare Pages returns HTTP 200 OK!"
+    echo "            Provisioning fixed. Ready to proceed with DNS migration."
+    echo "=================================================="
+    exit 0
+elif [ "${PAGES_STATUS}" = "500" ]; then
+    echo "    Result: [BUG ACTIVE] Cloudflare Pages still returns empty HTTP 500."
+    echo "            Internal Pages worker is not yet provisioned by Cloudflare Staff."
+    echo "=================================================="
+    exit 1
+else
+    echo "    Result: [UNEXPECTED STATUS] HTTP ${PAGES_STATUS} received."
+    echo "=================================================="
+    exit 2
+fi
