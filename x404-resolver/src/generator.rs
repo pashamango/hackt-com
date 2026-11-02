@@ -59,21 +59,38 @@ impl Generator for DeterministicStubGenerator {
 
         // Construct semantic document body satisfying min_content_length
         let mut body = String::new();
-        body.push_str(&format!("# Generated Edge Artifact for `{}`\n\n", envelope.uri));
+        body.push_str(&format!(
+            "# Generated Edge Artifact for `{}`\n\n",
+            envelope.uri
+        ));
         body.push_str("> [!NOTE]\n");
         body.push_str("> Generated locally on user machine via x404 Edge Resolver (Our Lady UX: Zero Network Calls).\n");
-        body.push_str(&format!("> Generator Mode: `{:?}` ({})\n\n", GeneratorMode::DeterministicStub, self.generator_version));
+        body.push_str(&format!(
+            "> Generator Mode: `{:?}` ({})\n\n",
+            GeneratorMode::DeterministicStub,
+            self.generator_version
+        ));
         body.push_str("## 1. Work Order Manifest\n");
         body.push_str(&format!("- **Target URI:** `{}`\n", envelope.uri));
         body.push_str(&format!("- **Description:** {}\n", envelope.description));
-        body.push_str(&format!("- **Envelope Hash:** `sha256:{}`\n", envelope_hash));
-        body.push_str(&format!("- **Deterministic Seed:** `{}`\n\n", &seed_hex[0..16]));
+        body.push_str(&format!(
+            "- **Envelope Hash:** `sha256:{}`\n",
+            envelope_hash
+        ));
+        body.push_str(&format!(
+            "- **Deterministic Seed:** `{}`\n\n",
+            &seed_hex[0..16]
+        ));
 
         body.push_str("## 2. Synthesized Knowledge Artifact\n");
         body.push_str("The requested resource was not found on remote origin servers, fulfilling the x404 generative contract.\n");
-        body.push_str("All computation was executed in a sandboxed, client-side WebAssembly environment.\n\n");
+        body.push_str(
+            "All computation was executed in a sandboxed, client-side WebAssembly environment.\n\n",
+        );
         body.push_str("### Context Parameters:\n");
-        for (k, v) in &envelope.context {
+        let mut context: Vec<_> = envelope.context.iter().collect();
+        context.sort_by(|(left, _), (right, _)| left.cmp(right));
+        for (k, v) in context {
             body.push_str(&format!("- **{}**: `{}`\n", k, v));
         }
         body.push_str("\n### Verification Tags:\n");
@@ -88,7 +105,10 @@ impl Generator for DeterministicStubGenerator {
         let content_hash_bytes = body_hasher.finalize();
         let content_hash = format!("infs:sha256:{}", hex::encode(content_hash_bytes));
 
-        let mut semantic_tags = envelope.verification_requirements.expected_semantic_tags.clone();
+        let mut semantic_tags = envelope
+            .verification_requirements
+            .expected_semantic_tags
+            .clone();
         if !semantic_tags.contains(&"x404".to_string()) {
             semantic_tags.push("x404".to_string());
         }

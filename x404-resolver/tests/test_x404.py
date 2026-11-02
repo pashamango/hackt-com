@@ -61,7 +61,7 @@ class TestX404Resolver(unittest.TestCase):
             env=dict(os.environ, PATH=f"{os.path.expanduser('~/.cargo/bin')}:{os.environ.get('PATH', '')}")
         )
         self.assertEqual(res.returncode, 0, f"Cargo tests failed:\n{res.stderr}\n{res.stdout}")
-        self.assertIn("4 passed", res.stdout)
+        self.assertIn("5 passed", res.stdout)
 
     def test_g2_wasm_target_exists_and_valid(self):
         """G2: WASM target builds for wasm32-unknown-unknown and is valid binary."""

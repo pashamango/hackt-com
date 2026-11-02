@@ -82,24 +82,32 @@ impl std::error::Error for X404Error {}
 
 impl X404Envelope {
     pub fn parse(json_str: &str) -> Result<Self, X404Error> {
-        let envelope: Self = serde_json::from_str(json_str)
-            .map_err(|e| X404Error::JsonParseError(e.to_string()))?;
+        let envelope: Self =
+            serde_json::from_str(json_str).map_err(|e| X404Error::JsonParseError(e.to_string()))?;
         envelope.validate()?;
         Ok(envelope)
     }
 
     pub fn validate(&self) -> Result<(), X404Error> {
         if self.uri.trim().is_empty() {
-            return Err(X404Error::ValidationError("URI must not be empty".to_string()));
+            return Err(X404Error::ValidationError(
+                "URI must not be empty".to_string(),
+            ));
         }
         if self.description.trim().is_empty() {
-            return Err(X404Error::ValidationError("Description must not be empty".to_string()));
+            return Err(X404Error::ValidationError(
+                "Description must not be empty".to_string(),
+            ));
         }
         if !self.policy.local_only {
-            return Err(X404Error::InvalidPolicy("Edge-first invariant violation: policy.local_only must be true".to_string()));
+            return Err(X404Error::InvalidPolicy(
+                "Edge-first invariant violation: policy.local_only must be true".to_string(),
+            ));
         }
         if self.policy.allowed_modalities.is_empty() {
-            return Err(X404Error::InvalidPolicy("Allowed modalities cannot be empty".to_string()));
+            return Err(X404Error::InvalidPolicy(
+                "Allowed modalities cannot be empty".to_string(),
+            ));
         }
         Ok(())
     }
@@ -108,28 +116,58 @@ impl X404Envelope {
     /// for content-addressed SIMSIM deduplication.
     pub fn canonical_hash(&self) -> String {
         let mut hasher = Sha256::new();
-        hasher.update(self.envelope_version.as_bytes());
-        hasher.update(b"|");
-        hasher.update(self.uri.trim().as_bytes());
-        hasher.update(b"|");
-        hasher.update(self.description.trim().as_bytes());
-        hasher.update(b"|");
+        // Every generation-affecting field participates in the semantic key.
+        // Length-prefixing avoids delimiter ambiguity (e.g. `a|bc` vs `a|b|c`).
+        fn field(hasher: &mut Sha256, value: &str) {
+            hasher.update((value.len() as u64).to_le_bytes());
+            hasher.update(value.as_bytes());
+        }
+        field(&mut hasher, self.envelope_version.trim());
+        field(&mut hasher, self.uri.trim());
+        field(&mut hasher, self.description.trim());
 
         // Deterministic context sorting
         let mut ctx_keys: Vec<_> = self.context.keys().collect();
         ctx_keys.sort();
         for k in ctx_keys {
-            hasher.update(k.as_bytes());
-            hasher.update(b"=");
-            hasher.update(self.context[k].as_bytes());
-            hasher.update(b";");
+            field(&mut hasher, k);
+            field(&mut hasher, &self.context[k]);
         }
 
-        hasher.update(b"|");
-        for m in &self.policy.allowed_modalities {
-            hasher.update(m.as_bytes());
-            hasher.update(b",");
+        let mut modalities = self.policy.allowed_modalities.clone();
+        modalities.sort();
+        for modality in modalities {
+            field(&mut hasher, &modality);
         }
+        hasher.update(self.policy.max_compute_ms.to_le_bytes());
+        hasher.update([
+            self.policy.local_only as u8,
+            self.policy.grace_attestation as u8,
+        ]);
+        hasher.update(
+            self.verification_requirements
+                .min_content_length
+                .to_le_bytes(),
+        );
+        field(
+            &mut hasher,
+            self.verification_requirements
+                .schema_url
+                .as_deref()
+                .unwrap_or(""),
+        );
+        let mut tags = self
+            .verification_requirements
+            .expected_semantic_tags
+            .clone();
+        tags.sort();
+        for tag in tags {
+            field(&mut hasher, &tag);
+        }
+        field(
+            &mut hasher,
+            &self.verification_requirements.integrity_hash_algo,
+        );
 
         let hash_bytes = hasher.finalize();
         hex::encode(hash_bytes)

@@ -81,11 +81,7 @@ impl X404Resolver {
 
         // 2. Check saturation for x420 backpressure (G6)
         if self.simulated_saturation {
-            let x420 = X420Envelope::new(
-                &ticket_id,
-                self.simulated_queue_pos,
-                self.simulated_eta,
-            );
+            let x420 = X420Envelope::new(&ticket_id, self.simulated_queue_pos, self.simulated_eta);
             let resp = ResolverResponse::Patience(x420);
             return serde_json::to_string_pretty(&resp).unwrap_or_default();
         }
@@ -108,7 +104,10 @@ impl X404Resolver {
 
     /// Handle client feedback/commands in response to x420 backpressure (G6).
     pub fn handle_client_action(&mut self, action_str: &str) -> String {
-        let ticket = self.active_ticket.clone().unwrap_or_else(|| "tkt-current".to_string());
+        let ticket = self
+            .active_ticket
+            .clone()
+            .unwrap_or_else(|| "tkt-current".to_string());
 
         if is_fsck_off_command(action_str) {
             // Polite exit from queue
@@ -239,7 +238,8 @@ impl WasmX404Resolver {
     /// Simulates queue overload to test x420 patience backpressure.
     #[wasm_bindgen]
     pub fn simulate_saturation(&mut self, saturated: bool, queue_pos: u32, eta_seconds: u32) {
-        self.inner.simulate_saturation(saturated, queue_pos, eta_seconds);
+        self.inner
+            .simulate_saturation(saturated, queue_pos, eta_seconds);
     }
 
     #[wasm_bindgen]
@@ -331,7 +331,10 @@ mod tests {
         assert_eq!(res1.content_body, res2.content_body);
         assert_eq!(res1.content_hash, res2.content_hash);
         assert!(res1.content_body.len() >= env.verification_requirements.min_content_length);
-        assert_eq!(res1.generator_mode, generator::GeneratorMode::DeterministicStub);
+        assert_eq!(
+            res1.generator_mode,
+            generator::GeneratorMode::DeterministicStub
+        );
         assert!(res1.content_hash.starts_with("infs:sha256:"));
         assert!(res1.our_lady_grace);
     }
@@ -360,12 +363,38 @@ mod tests {
 
         match resp2 {
             ResolverResponse::Success(res) => {
-                assert!(res.from_cache, "Second request must be returned from cache (G3)");
+                assert!(
+                    res.from_cache,
+                    "Second request must be returned from cache (G3)"
+                );
                 assert_eq!(res.content_body, body1);
-                assert_eq!(resolver.cache_size(), 1, "Cache size must not duplicate entries");
+                assert_eq!(
+                    resolver.cache_size(),
+                    1,
+                    "Cache size must not duplicate entries"
+                );
             }
             _ => panic!("Expected cached Success"),
         }
+    }
+
+    #[test]
+    fn test_g3_semantic_key_covers_policy_and_is_order_independent() {
+        let first = X404Envelope::parse(sample_valid_envelope_json()).unwrap();
+        let reordered = r#"{
+            "envelope_version":"x404-0.1","uri":"https://hackt.com/liturgy/daily-manifest",
+            "description":"Daily liturgical manifest for sovereign builder node",
+            "context":{"mandate":"min-114-x404","author":"agy@wolfram"},
+            "policy":{"allowed_modalities":["text/markdown"],"max_compute_ms":10000,"local_only":true,"grace_attestation":true},
+            "verification_requirements":{"min_content_length":64,"schema_url":null,"expected_semantic_tags":["sovereign","liturgy"],"integrity_hash_algo":"sha256"},
+            "created_at":"2099-01-01T00:00:00Z","client_identity":null
+        }"#;
+        let second = X404Envelope::parse(reordered).unwrap();
+        assert_eq!(first.canonical_hash(), second.canonical_hash());
+
+        let mut changed = second.clone();
+        changed.policy.max_compute_ms += 1;
+        assert_ne!(first.canonical_hash(), changed.canonical_hash());
     }
 
     #[test]
