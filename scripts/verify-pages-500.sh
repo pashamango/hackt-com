@@ -28,6 +28,13 @@ echo ">>> Probing Cloudflare Pages Edge: ${PAGES_URL}"
 PAGES_STATUS=$(curl -sI -o /dev/null -w "%{http_code}\n" "${PAGES_URL}" || true)
 
 echo "    HTTP Status Code: ${PAGES_STATUS}"
+if [ "${PROD_STATUS}" != "200" ]; then
+    echo "    Result: [STANDBY UNHEALTHY] Production domain is not serving HTTP 200 (status: ${PROD_STATUS})."
+    echo "            DNS migration or incident status cannot be verified safely."
+    echo "=================================================="
+    exit 2
+fi
+
 if [ "${PAGES_STATUS}" = "200" ]; then
     echo "    Result: [RESOLVED] Cloudflare Pages returns HTTP 200 OK!"
     echo "            Provisioning fixed. Ready to proceed with DNS migration."

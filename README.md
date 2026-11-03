@@ -16,4 +16,7 @@ Official website and digital chapel of Hack Temple.
   ```bash
   ./scripts/verify-pages-500.sh
   ```
-  Returns exit code `0` when Cloudflare Pages is restored (HTTP 200), or exit code `1` while the provisioning bug is active.
+  Exit code semantics:
+  * `0`: Cloudflare Pages restored (HTTP 200) and production standby healthy (HTTP 200). Ready for DNS migration.
+  * `1`: Known provisioning bug active (Pages returns HTTP 500, standby healthy with HTTP 200).
+  * `2`: Standby unhealthy (HTTP != 200), network failure, or unexpected Pages status.
